@@ -137,9 +137,13 @@ class FireverseMusicBot {
                 `${this.baseUrl}/userInfo/getMyInfo`,
                 { headers: this.headers }
             );
-            const { level, expValue, score } = response.data.data;
-            this.log(`Level: ${level} | Score: ${score} | EXP: ${expValue}`);
-            return response.data.data;
+            const { level, expValue, score } = response.data.data || {};
+            if (level !== undefined) {
+                this.log(`Level: ${level} | Score: ${score} | EXP: ${expValue}`);
+                return response.data.data;
+            } else {
+                throw new Error('Incomplete user info data');
+            }
         } catch (error) {
             this.log('Error getting user info: ' + error.message);
             return null;
@@ -355,8 +359,8 @@ async function getNonce(axiosInstance) {
 }
 
 async function signMessage(wallet, nonce) {
-    const messageToSign = `web3.fireverseai.com wants you to sign in with your Ethereum account:\n${wallet.address}\n\nPlease sign with your account\n\nURI: https://web3.fireverseai.com\nVersion: 1\nChain ID: 8453\nNonce: ${nonce}\nIssued At: ${new Date().toISOString()}`;
-    
+    const messageToSign = `web3.fireverseai.com wants you to sign in with your Ethereum account:\n${wallet.address}\n\nPlease sign with your account\n\nURI: https://web3.fireverseai.com\nVersion: 1\nChain ID: 1\nNonce: ${nonce}`;
+
     const signingKey = new ethers.SigningKey(wallet.privateKey);
     const messageHash = ethers.hashMessage(messageToSign);
     const signature = signingKey.sign(messageHash);
@@ -412,7 +416,7 @@ async function processWalletAndTasks(wallet, inviteCode, outputStream, index, to
     const verifyResult = await verifyWallet(axiosInstance, message, signature, inviteCode);
     
     if (verifyResult?.success) {
-        const walletInfo = `Wallet ${index + 1}/${total}\nAddress: ${wallet.address}\nPrivate Key: ${wallet.privateKey}\nVerification Status: Success\nSession ID: ${session.sessionId}\nToken: ${verifyResult.data.token}\n------------------------\n`;
+        const walletInfo = `Wallet ${index + 1}/${total}\nAddress: ${wallet.address}\nPrivate Key: ${wallet.privateKey}\nVerification Status: Success\nSession ID: ${session.sessionId}\nToken: ${verifyResult.data.token}\n\n`;
         outputStream.write(walletInfo);
         console.log('✅ Wallet successfully verified and saved');
 
