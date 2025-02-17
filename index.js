@@ -66,7 +66,11 @@ class FireverseMusicBot {
                 `${this.baseUrl}/userInfo/getMyInfo`,
                 { headers: this.headers }
             );
-            const { level, expValue, score, nextLevelExpValue } = response.data.data;
+            const userInfo = response.data.data;
+            if (!userInfo) {
+                throw new Error('User info data is undefined');
+            }
+            const { level, expValue, score, nextLevelExpValue } = userInfo;
             this.log('\n📊 User Stats:');
             this.log(`Level: ${level} | EXP: ${expValue}/${nextLevelExpValue} | Score: ${score}`);
             this.log(`Total Listening Time: ${Math.floor(this.totalListeningTime / 60)} minutes\n`);
@@ -320,40 +324,40 @@ class FireverseMusicBot {
     }
 }
 
-    async function readTokens() {
-        try {
-            const content = await fs.readFile('tokens.txt', 'utf-8');
-            return content.split('\n')
-                .map(line => line.trim())
-                .filter(line => line && !line.startsWith('#'));
-        } catch (error) {
-            console.error('❌ Error reading tokens.txt:', error.message);
-            process.exit(1);
-        }
+async function readTokens() {
+    try {
+        const content = await fs.readFile('tokens.txt', 'utf-8');
+        return content.split('\n')
+            .map(line => line.trim())
+            .filter(line => line && !line.startsWith('#'));
+    } catch (error) {
+        console.error('❌ Error reading tokens.txt:', error.message);
+        process.exit(1);
+    }
+}
+
+async function main() {
+    const tokens = await readTokens();
+    
+    if (tokens.length === 0) {
+        console.error('❌ No tokens found in tokens.txt');
+        process.exit(1);
     }
 
-    async function main() {
-        const tokens = await readTokens();
-        
-        if (tokens.length === 0) {
-            console.error('❌ No tokens found in tokens.txt');
-            process.exit(1);
-        }
-
-        console.log(`📱 Found ${tokens.length} account(s)`);
-        
-        const bots = tokens.map((token, index) => new FireverseMusicBot(token, index + 1));
-        
-        const initResults = await Promise.all(bots.map(bot => bot.initialize()));
-        
-        const activeBots = bots.filter((_, index) => initResults[index]);
-        
-        if (activeBots.length === 0) {
-            console.error('❌ No accounts could be initialized successfully');
-            process.exit(1);
-        }
-
-        await Promise.all(activeBots.map(bot => bot.startDailyLoop()));
+    console.log(`📱 Found ${tokens.length} account(s)`);
+    
+    const bots = tokens.map((token, index) => new FireverseMusicBot(token, index + 1));
+    
+    const initResults = await Promise.all(bots.map(bot => bot.initialize()));
+    
+    const activeBots = bots.filter((_, index) => initResults[index]);
+    
+    if (activeBots.length === 0) {
+        console.error('❌ No accounts could be initialized successfully');
+        process.exit(1);
     }
 
-    main().catch(console.error);
+    await Promise.all(activeBots.map(bot => bot.startDailyLoop()));
+}
+
+main().catch(console.error);
